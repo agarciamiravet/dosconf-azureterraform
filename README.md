@@ -54,12 +54,15 @@ Módulo de base de datos  - [https://github.com/recetasdevops/dosconf2020-terraf
 
 Módulo WebApp - [https://github.com/recetasdevops/dosconf2020-terraform-webapp-module](https://github.com/recetasdevops/dosconf2020-terraform-webapp-module)
 
+
 Asimismo dentro de esta tercera forma, podeís encontrar algunos tests realizados con Inspec.  La ubicación de estos tests es:
 
 [https://github.com/agarciamiravet/dosconf-azureterraform/tree/master/src/03-TerceraForma/VerificationTests](https://github.com/agarciamiravet/dosconf-azureterraform/tree/master/src/03-TerceraForma/VerificationTests)
 
+
 Como en los formas anteriores, se incluye la pipeline de Azure DevOps que esta en la siguiente ruta:
 
 [https://github.com/agarciamiravet/dosconf-azureterraform/blob/master/src/03-TerceraForma/azure-pipelines.yml](https://github.com/agarciamiravet/dosconf-azureterraform/blob/master/src/03-TerceraForma/azure-pipelines.yml)
+
 
 En esta pipeline se despliega primero la infraestructura de base de datos. Una vez desplegada correctamente, se despliega la infraestructura de la WebApp. Por último para corroborar que aquella infraestructura que hemos desplegado es la correcta tal y como queremos que esté, lanzamos los tests de Inspec.
