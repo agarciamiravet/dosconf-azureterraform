@@ -63,7 +63,7 @@ Asimismo dentro de esta tercera forma, podeís encontrar algunos tests realizado
 [https://github.com/agarciamiravet/dosconf-azureterraform/tree/master/src/03-TerceraForma/VerificationTests](https://github.com/agarciamiravet/dosconf-azureterraform/tree/master/src/03-TerceraForma/VerificationTests)
 
 
-Como en los formas anteriores, se incluye la pipeline de Azure DevOps que esta en la siguiente ruta:
+Como en las 2 formas o ejemplos anteriores, se incluye la pipeline de Azure DevOps que esta en la siguiente ruta:
 
 [https://github.com/agarciamiravet/dosconf-azureterraform/blob/master/src/03-TerceraForma/azure-pipelines.yml](https://github.com/agarciamiravet/dosconf-azureterraform/blob/master/src/03-TerceraForma/azure-pipelines.yml)
 
