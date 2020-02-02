@@ -1,12 +1,12 @@
-#terraform {
- # backend "remote" {
-  #  organization = "recetasdevops"
+terraform {
+  backend "remote" {
+    organization = "recetasdevops"
 
-   # workspaces {
-    #  name = "charlamadriddotnet-db"
-    #}
-  #}
-#}
+    workspaces {
+      name = "charlamadriddotnet-db"
+    }
+  }
+}
 
 provider "azurerm" {
 
