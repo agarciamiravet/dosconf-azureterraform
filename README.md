@@ -27,6 +27,7 @@ Parte de lo explicado en la sesión  puede verse en los siguientes  posts:
 # Código fuente 
 
 **01-Forma - La más simple**
+
 Dentro del repositorio, en [https://github.com/agarciamiravet/dosconf-azureterraform/tree/master/src/01-PrimeraForma](https://github.com/agarciamiravet/dosconf-azureterraform/tree/master/src/01-PrimeraForma) podeís encontrar el código para desplegar nuestra infraestrura mencionada arriba en **Objetivo** usando Terraform de la forma más sencilla.  Esta primera forma consiste que con un único fichero de Terraform ([**main.tf**](https://github.com/recetasdevops/dosconf2020-terraform-database-module/blob/master/main.tf))  desplegar todo nuestra infraestructura. 
 
 También se incluye una pipeline de Azure DevOps  [azure-pipelines.yml](https://github.com/agarciamiravet/dosconf-azureterraform/blob/master/src/01-PrimeraForma/azure-pipelines.yml) para realizar el despliegue de la infraestructura en CI/CD.
