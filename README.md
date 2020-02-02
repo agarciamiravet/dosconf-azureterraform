@@ -33,6 +33,7 @@ Dentro del repositorio, en [https://github.com/agarciamiravet/dosconf-azureterra
 También se incluye una pipeline de Azure DevOps  [azure-pipelines.yml](https://github.com/agarciamiravet/dosconf-azureterraform/blob/master/src/01-PrimeraForma/azure-pipelines.yml) para realizar el despliegue de la infraestructura en CI/CD.
 
 **02- Forma - Usando módulos**
+
 Dentro del repositorio, en [https://github.com/agarciamiravet/dosconf-azureterraform/tree/master/src/02-SegundaForma](https://github.com/agarciamiravet/dosconf-azureterraform/tree/master/src/02-SegundaForma)  encontrareís como desplegar la arquitectura de ejemplo, pero esta vez haciendo uso de módulos en local. Estos módulos estan ubicados en la carpeta Modules en:
 
 [https://github.com/agarciamiravet/dosconf-azureterraform/tree/master/src/02-SegundaForma/Modules](https://github.com/agarciamiravet/dosconf-azureterraform/tree/master/src/02-SegundaForma/Modules)
@@ -44,6 +45,7 @@ En esta segunda forma, tenemos 2 módulos uno para crear nuestra base de datos ,
 También se incluye una pipeline de Azure DevOps  [azure-pipelines.yml][https://github.com/agarciamiravet/dosconf-azureterraform/blob/master/src/02-SegundaForma/azure-pipelines.yml](https://github.com/agarciamiravet/dosconf-azureterraform/blob/master/src/02-SegundaForma/azure-pipelines.yml) para realizar el despliegue de la infraestructura y además desplegar la aplicación de .Net Core una vez se ha desplegado la infraestructure.
 
 **03-Forma-Usando múltiples directorios y módulos en remoto**
+
 Dentro del repositorio, en [https://github.com/agarciamiravet/dosconf-azureterraform/tree/master/src/03-TerceraForma](https://github.com/agarciamiravet/dosconf-azureterraform/tree/master/src/03-TerceraForma)  podeís encontrar la tercera forma explciada en la sesión  para desplegar la infraestructura con Terraform.
 
 En este caso separamos cada uno de los componentes de nuestra infraestructura en carpetas, para asi tener diferentes ficheros de estados (tfstates) y poder desplegar independientemente cada parte de nuestra infraestrutura. 
