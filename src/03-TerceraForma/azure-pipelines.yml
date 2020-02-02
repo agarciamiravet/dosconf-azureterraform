@@ -1,0 +1,243 @@
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+     - group: TerraformVariables
+  
+stages:
+- stage: Build
+  jobs:
+  - job: Build
+    continueOnError: true
+    steps:
+    - task: DownloadSecureFile@1
+      name : "database_staging_tfvars"
+      inputs:
+       secureFile: 'terraform-staging-database.auto.tfvars'
+
+    
+    - task: DownloadSecureFile@1
+      name : "webapp_staging_tfvars"
+      inputs:
+       secureFile: 'terraform-staging-webapp.auto.tfvars'
+    
+    - task: Bash@3
+      name : 'Tfvars_database'
+      inputs:
+        targetType: 'inline'
+        script: |
+          mv $(database_staging_tfvars.secureFilePath)  $(Build.SourcesDirectory)/src/staging/Database/terraform-staging-database.auto.tfvars
+          ls
+          chmod 775 terraform-staging-database.auto.tfvars
+        workingDirectory: '$(Build.SourcesDirectory)/src/staging/Database'
+
+    - task: Bash@3
+      name : 'Tfvars_webapp'
+      inputs:
+          targetType: 'inline'
+          script: |
+            mv $(webapp_staging_tfvars.secureFilePath)  $(Build.SourcesDirectory)/src/staging/WebApp/terraform-staging-webapp.auto.tfvars
+            ls
+            chmod 775 terraform-staging-webapp.auto.tfvars
+          workingDirectory: '$(Build.SourcesDirectory)/src/staging/WebApp'
+
+    - task: TerraformInstaller@0
+      inputs:
+        terraformVersion: '0.12.20'
+    - task: TerraformTaskV1@0
+      name: terraform_init_Database
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/src/staging/Database'
+        backendServiceArm: '[Subscription_ID]'
+        backendAzureRmResourceGroupName: 'rg-terraform-backend'
+        backendAzureRmStorageAccountName: 'stdosconftfbackend'
+        backendAzureRmContainerName: 'terraform-backend'
+        backendAzureRmKey: 'terraform-multifolder-db.tfstate'
+
+    - task: TerraformTaskV1@0
+      name : 'terraform_plan_database'
+      inputs:
+        provider: 'azurerm'
+        command: 'plan'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/src/staging/Database'
+        commandOptions: '-var-file terraform-staging-database.auto.tfvars -out database-staging.tfplan'
+        environmentServiceNameAzureRM: '[Subscription_ID]'
+
+    - task: TerraformTaskV1@0
+      name: terraform_init_WebApp
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/src/staging/WebApp'
+        backendServiceArm: '[Subscription_ID]'
+        backendAzureRmResourceGroupName: 'rg-terraform-backend'
+        backendAzureRmStorageAccountName: 'stdosconftfbackend'
+        backendAzureRmContainerName: 'terraform-backend'
+        backendAzureRmKey: 'terraform-multifolder-webapp.tfstate'
+    
+    - task: TerraformTaskV1@0
+      name : terraform_plan_WebApp
+      inputs:
+        provider: 'azurerm'
+        command: 'plan'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/src/staging/WebApp'
+        commandOptions: '-var-file terraform-staging-webapp.auto.tfvars -out webapp-staging.tfplan'
+        environmentServiceNameAzureRM: '[Subscription_ID]'
+    
+    - task: Bash@3
+      inputs:
+        targetType: 'inline'
+        script: 'ls'
+        workingDirectory: '$(Pipeline.Workspace)'
+    
+    - task: PublishPipelineArtifact@1
+      name : terraform_publish
+      inputs:
+        targetPath: '$(System.DefaultWorkingDirectory)/src/staging'
+        artifact: 'drop'
+        publishLocation: 'pipeline'
+
+    - task: PublishPipelineArtifact@1
+      name : inspec_publish
+      inputs:
+        targetPath: '$(System.DefaultWorkingDirectory)/src/VerificationTests'
+        artifact: 'inspec'
+        publishLocation: 'pipeline'
+
+- stage: DeployInfrastucture
+
+  jobs:
+  - job: DeployDataBaseStaging
+    continueOnError: true
+    steps:
+    - task: TerraformInstaller@0
+      inputs:
+        terraformVersion: '0.12.20'
+    
+
+    - task: DownloadSecureFile@1
+      name : "database_staging_tfvars"
+      inputs:
+       secureFile: 'terraform-staging-database.auto.tfvars'
+
+    
+    - task: DownloadSecureFile@1
+      name : "webapp_staging_tfvars"
+      inputs:
+       secureFile: 'terraform-staging-webapp.auto.tfvars'
+
+    - task: DownloadPipelineArtifact@2
+      inputs:
+        buildType: 'current'
+        artifactName: 'drop'
+        itemPattern: |
+          Database/datasources.tf
+          Database/main.tf
+          Database/variables.tf
+          Database/outputs.tf
+          Database/database-staging.tfplan
+          WebApp/datasources.tf
+          WebApp/main.tf
+          WebApp/variables.tf
+          WebApp/outputs.tf
+          WebApp/webapp-staging.tfplan
+        targetPath: '$(Pipeline.Workspace)'
+
+    - task: Bash@3
+      name : 'Tfvars_database'
+      inputs:
+        targetType: 'inline'
+        script: |
+          mv $(database_staging_tfvars.secureFilePath)  $(Pipeline.Workspace)/Database/terraform-staging-database.auto.tfvars
+          chmod 775 terraform-staging-database.auto.tfvars
+        workingDirectory: '$(Pipeline.Workspace)/Database'
+
+    - task: Bash@3
+      name : 'Tfvars_webapp'
+      inputs:
+          targetType: 'inline'
+          script: |
+            mv $(webapp_staging_tfvars.secureFilePath)  $(Pipeline.Workspace)/WebApp/terraform-staging-webapp.auto.tfvars
+            chmod 775 terraform-staging-webapp.auto.tfvars
+          workingDirectory: '$(Pipeline.Workspace)/WebApp'
+
+    - task: TerraformTaskV1@0
+      name: terraform_init_Database
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(Pipeline.Workspace)/Database'
+        backendServiceArm: '[Subscription_ID]'
+        backendAzureRmResourceGroupName: 'rg-terraform-backend'
+        backendAzureRmStorageAccountName: 'stdosconftfbackend'
+        backendAzureRmContainerName: 'terraform-backend'
+        backendAzureRmKey: 'terraform-multifolder-db.tfstate'
+
+    - task: TerraformTaskV1@0
+      name: terraform_apply_Database
+      inputs:
+        provider: 'azurerm'
+        command: 'apply'
+        workingDirectory: '$(Pipeline.Workspace)/Database'
+        commandOptions: '-var-file=terraform-staging-database.auto.tfvars'
+        environmentServiceNameAzureRM: '[Subscription_ID]'
+    
+    - task: TerraformTaskV1@0
+      name: terraform_init_Webapp
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(Pipeline.Workspace)/WebApp'
+        backendServiceArm: '[Subscription_ID]'
+        backendAzureRmResourceGroupName: 'rg-terraform-backend'
+        backendAzureRmStorageAccountName: 'stdosconftfbackend'
+        backendAzureRmContainerName: 'terraform-backend'
+        backendAzureRmKey: 'terraform-multifolder-webapp.tfstate'
+
+    - task: TerraformTaskV1@0
+      name: terraform_apply_WebApp
+      inputs:
+        provider: 'azurerm'
+        command: 'apply'
+        workingDirectory: '$(Pipeline.Workspace)/WebApp'
+        commandOptions: '-var-file=terraform-staging-webapp.auto.tfvars'
+        environmentServiceNameAzureRM: '[Subscription_ID]'
+    
+    - task: AzureCLI@2
+      displayName: 'RotateKeys'
+      inputs:
+        azureSubscription: '[Subscription_ID]'
+        scriptType: 'bash'
+        scriptLocation: 'inlineScript'
+        inlineScript: 'az sql server update --admin-password $(SQLNEWPASS) --name sql-pasionporlosbits-staging --resource-group rg-dosconf2020-staging'
+      env:
+        SQLNEWPASS: $(SQLNEWPASS)
+    
+- stage: InspecTests
+  jobs:
+  - job: InspecTests
+    continueOnError: true
+    steps:
+    - task: DownloadPipelineArtifact@2
+      inputs:
+        buildType: 'current'
+        artifactName: 'inspec'
+        targetPath: '$(Pipeline.Workspace)'
+    - task: vsts-chef-task-install-inspec@1
+      inputs:
+        chefInstallScriptDownloadURLLinux: 'https://omnitruck.chef.io/install.sh'
+
+    - task: vsts-chef-task-exec-inspec@1
+      inputs:
+        inspecProfilePath: '$(Pipeline.Workspace)'
+        inspecArguments: '.  -t azure:// --chef-license=accept'
+      env:
+       AZURE_CLIENT_ID: $(AZURE_CLIENT_ID)
+       AZURE_CLIENT_SECRET: $(AZURE_CLIENT_SECRET)
+       AZURE_SUBSCRIPTION_ID: $(AZURE_SUBSCRIPTION_ID)
+       AZURE_TENANT_ID: $(AZURE_TENANT_ID)

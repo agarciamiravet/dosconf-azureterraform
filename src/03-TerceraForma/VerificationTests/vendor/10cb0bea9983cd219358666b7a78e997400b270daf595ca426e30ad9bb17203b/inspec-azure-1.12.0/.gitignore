@@ -1,0 +1,10 @@
+test/fixtures/vcr_cassettes
+.terraform
+**/.*-attributes.yml
+terraform/.terraform/
+terraform/terraform.tfstate*
+terraform/terraform.tfstate.backup
+terraform/*.plan
+.envrc
+inspec.lock
+Gemfile.lock

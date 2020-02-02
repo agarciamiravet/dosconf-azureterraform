@@ -1,0 +1,141 @@
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+ - group: TerraformVariables
+
+stages:
+- stage: TerraformInit 
+  jobs:
+  - job: terraform_init
+    steps:
+   
+    - task: DownloadSecureFile@1
+      name : "tfvars"
+      inputs:
+        secureFile: 'terraform-usingmodules.auto.tfvars'
+        
+    - task: Bash@3
+      inputs:
+        targetType: 'inline'
+        script: |
+          mv $(tfvars.secureFilePath)  $(Build.SourcesDirectory)/src/terraform-usingmodules.auto.tfvars      
+          ls
+          chmod 775 terraform-usingmodules.auto.tfvars
+        workingDirectory: '$(Build.SourcesDirectory)/src'
+
+    - task: TerraformInstaller@0
+      name: "terraform_install"
+      inputs:
+        terraformVersion: '0.12.20'
+    
+    - task: TerraformTaskV1@0
+      name: terraform_init
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/src'
+        backendServiceArm: '[Subscription_ID]'
+        backendAzureRmResourceGroupName: 'rg-terraform-backend'
+        backendAzureRmStorageAccountName: 'stdosconftfbackend'
+        backendAzureRmContainerName: 'terraform-backend'
+        backendAzureRmKey: 'modules.terraform.tfstate'
+
+    - task: TerraformTaskV1@0
+      name: terraform_plan
+      inputs:
+        provider: 'azurerm'
+        command: 'plan'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/src'
+        commandOptions: '-var-file=$(System.DefaultWorkingDirectory)/src/terraform-usingmodules.auto.tfvars -out terraformwithmodules.tfplan'
+        environmentServiceNameAzureRM: '[Subscription_ID]'
+    - task: PublishPipelineArtifact@1
+      inputs:
+       artifact: 'drop' 
+       targetPath: '$(System.DefaultWorkingDirectory)/src'
+
+- stage: DeployInfrastructure
+  jobs:
+  - job: deploy_terraform
+    steps:
+    - task: TerraformInstaller@0
+      name: "terraform_install"
+      inputs:
+        terraformVersion: '0.12.20'
+    - task: DownloadPipelineArtifact@2
+      inputs:
+        buildType: 'current'
+        artifactName: 'drop'
+        itemPattern: |
+          terraformwithmodules.tfplan
+          main.tf
+          variables.tf
+          outputs.tf
+          Modules/**
+        targetPath: '$(Pipeline.Workspace)'
+    - task: DownloadSecureFile@1
+      name : "tfvars"
+      inputs:
+        secureFile: 'terraform-usingmodules.auto.tfvars'
+        
+    - task: Bash@3
+      inputs:
+        targetType: 'inline'
+        script: |
+          mv $(tfvars.secureFilePath)  $(Pipeline.Workspace)/terraform-usingmodules.auto.tfvars        
+          ls
+          chmod 775 terraform-usingmodules.auto.tfvars
+        workingDirectory: '$(Pipeline.Workspace)'
+    - task: Bash@3
+      name : "test"
+      inputs:
+        targetType: 'inline'
+        script: |
+          cd $(Pipeline.Workspace)
+          ls
+    - task: TerraformTaskV1@0
+      name: terraform_init
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(Pipeline.Workspace)'
+        backendServiceArm: '[Subscription_ID]'
+        backendAzureRmResourceGroupName: 'rg-terraform-backend'
+        backendAzureRmStorageAccountName: 'stdosconftfbackend'
+        backendAzureRmContainerName: 'terraform-backend'
+        backendAzureRmKey: 'modules.terraform.tfstate'
+    
+    - task: TerraformTaskV1@0
+      name: deploy_terra
+      inputs:
+        provider: 'azurerm'
+        command: 'apply'
+        workingDirectory: '$(Pipeline.Workspace)'
+        commandOptions: 'terraformwithmodules.tfplan'
+        environmentServiceNameAzureRM: '[Subscription_ID]'
+
+- stage: DeployWebAppCode
+  jobs:
+  - job: downloadwebappcodeartifact
+    steps:
+    - task: DownloadPipelineArtifact@2
+      inputs:
+        buildType: 'specific'
+        project: '521d287f-721d-4523-8e9f-7cba8049eb53'
+        definition: '28'
+        specificBuildWithTriggering: true
+        buildVersionToDownload: 'latest'
+        targetPath: '$(Pipeline.Workspace)'
+
+    - task: AzureRmWebAppDeployment@4
+      inputs:
+        ConnectionType: 'AzureRM'
+        azureSubscription: '[Subscription_ID]'
+        appType: 'webApp'
+        WebAppName: 'pasiondebits'
+        packageForLinux: '$(Pipeline.Workspace)/**/*.zip'
+
+    

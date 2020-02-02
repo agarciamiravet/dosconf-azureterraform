@@ -1,0 +1,112 @@
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+ - group: TerraformVariables
+
+stages:
+- stage: TerraformInit 
+  jobs:
+  - job: run_build
+    steps:
+    - script: echo Build
+    - task: DownloadSecureFile@1
+      name : "tfvars"
+      inputs:
+        secureFile: 'terraform-simple.auto.tfvars'
+    - task: Bash@3
+      inputs:
+        targetType: 'inline'
+        script: |
+          mv $(tfvars.secureFilePath)  $(Build.SourcesDirectory)/src/terraform-simple.auto.tfvars        
+          ls
+          chmod 775 terraform-simple.auto.tfvars
+        workingDirectory: '$(Build.SourcesDirectory)/src'
+    - task: TerraformInstaller@0
+      name: "terraform_install"
+      inputs:
+        terraformVersion: '0.12.20'
+    
+    - task: TerraformTaskV1@0
+      name: terraform_init
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/src'
+        backendServiceArm: '[Subscription_ID]'
+        backendAzureRmResourceGroupName: 'rg-terraform-backend'
+        backendAzureRmStorageAccountName: 'stdosconftfbackend'
+        backendAzureRmContainerName: 'terraform-backend'
+        backendAzureRmKey: 'terraform-simple.tfstate'
+    - task: TerraformTaskV1@0
+      name: terraform_plan
+      inputs:
+        provider: 'azurerm'
+        command: 'plan'
+        workingDirectory: '$(System.DefaultWorkingDirectory)/src'
+        commandOptions: '-var-file=$(System.DefaultWorkingDirectory)/src/terraform-simple.auto.tfvars -out terraformsimple.tfplan'
+        environmentServiceNameAzureRM: '[Subscription_ID]'
+    - task: PublishPipelineArtifact@1
+      inputs:
+       artifact: 'drop' 
+       targetPath: '$(System.DefaultWorkingDirectory)/src'
+- stage: DeployInfrastructure
+  jobs:
+  - job: DeployTerraform
+    steps:
+    - task: TerraformInstaller@0
+      name: "terraform_install"
+      inputs:
+        terraformVersion: '0.12.20'
+    - task: DownloadPipelineArtifact@2
+      inputs:
+        buildType: 'current'
+        artifactName: 'drop'
+        itemPattern: |
+          terraformsimple.tfplan
+          main.tf
+          variables.tf
+          outputs.tf
+        targetPath: '$(Pipeline.Workspace)'
+    - task: DownloadSecureFile@1
+      name : "tfvars"
+      inputs:
+        secureFile: 'terraform-simple.auto.tfvars'
+        
+    - task: Bash@3
+      inputs:
+        targetType: 'inline'
+        script: |
+          mv $(tfvars.secureFilePath)  $(Pipeline.Workspace)/terraform-simple.auto.tfvars        
+          ls
+          chmod 775 terraform-simple.auto.tfvars
+        workingDirectory: '$(Pipeline.Workspace)'
+    - task: Bash@3
+      name : "test"
+      inputs:
+        targetType: 'inline'
+        script: |
+          cd $(Pipeline.Workspace)
+          ls
+    - task: TerraformTaskV1@0
+      name: terraform_init
+      inputs:
+        provider: 'azurerm'
+        command: 'init'
+        workingDirectory: '$(Pipeline.Workspace)'
+        backendServiceArm: '[Subscription_ID]'
+        backendAzureRmResourceGroupName: 'rg-terraform-backend'
+        backendAzureRmStorageAccountName: 'stdosconftfbackend'
+        backendAzureRmContainerName: 'terraform-backend'
+        backendAzureRmKey: 'terraform-simple.tfstate'
+    - task: TerraformTaskV1@0
+      name: deploy_terra
+      inputs:
+        provider: 'azurerm'
+        command: 'apply'
+        workingDirectory: '$(Pipeline.Workspace)'
+        commandOptions: 'terraformsimple.tfplan'
+        environmentServiceNameAzureRM: '[Subscription_ID]'
